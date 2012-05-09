@@ -1,3 +1,3 @@
-module SignedActiveresource
-  VERSION = "0.0.1"
+module SignedActiveResource
+  VERSION = "1.0.0"
 end
