@@ -21,20 +21,22 @@ module SignedActiveResource
     end
 
     private
-    # Makes request to remote service.
-    def request(method, path, *arguments)
-      logger.info "#{method.to_s.upcase} #{site.scheme}://#{site.host}:#{site.port}#{path}" if logger
-      result = nil
-      ms = Benchmark.ms {
-        data = arguments.shift
-        request = "Net::HTTP::#{method.to_s.titleize}".constantize.new(path, arguments.first)
-        res = nil
 
+    def request(method, path, *arguments)
+      result = ActiveSupport::Notifications.instrument("request.active_resource") do |payload|
+        payload[:method] = method
+        payload[:request_uri] = "#{site.scheme}://#{site.host}:#{site.port}#{path}"
+
+        if arguments.size > 1
+          data = arguments.shift
+        end
+        initheader = arguments.shift
+
+        request = "Net::HTTP::#{method.to_s.titleize}".constantize.new(path, initheader)
         request_signer.sign!(request) if request_signer
 
-        result = http.request request, data
-      }
-      logger.info "--> %d %s (%d %.0fms)" % [result.code, result.message, result.body ? result.body.length : 0, ms] if logger
+        payload[:result] = http.request request, data
+      end
       handle_response(result)
     rescue Timeout::Error => e
       raise TimeoutError.new(e.message)
