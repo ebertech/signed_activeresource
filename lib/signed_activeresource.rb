@@ -41,10 +41,6 @@ module SignedActiveResource
     def request_handler
       self.class.request_handler(self)
     end
-
-    def request_signature
-      nil # override in subclasses
-    end
   end
 
   class Connection < ActiveResource::Connection
