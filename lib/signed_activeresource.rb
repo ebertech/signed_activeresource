@@ -36,6 +36,14 @@ module SignedActiveResource
     def self.request_handler(object_instance = nil)
       SignedRequestHandler.new(request_signature, object_instance)
     end
+    
+    protected
+    
+    def connection(refresh = false)
+      self.class.connection(refresh).tap do |c|
+        c.request_handler = request_handler
+      end
+    end
 
     def request_handler
       self.class.request_handler(self)
