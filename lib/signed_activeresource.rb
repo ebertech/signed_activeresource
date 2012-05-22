@@ -9,19 +9,21 @@ module SignedActiveResource
     end
 
     def handle_request(http, method, path, *arguments)
+      request = build_request(method, path, *arguments)
+      @request_signer.sign!(request) if @request_signer
+
+      http.request request
+    end
+
+    def build_request(method, path, *arguments)
       if arguments.size > 1
         data = arguments.shift
       end
       init_header = arguments.shift
-      request = build_request(method, path, init_header)
 
-      @request_signer.sign!(request) if @request_signer
-
-      http.request request, data
-    end
-
-    def build_request(method, path, init_header)
-      "Net::HTTP::#{method.to_s.titleize}".constantize.new(path, init_header)
+      "Net::HTTP::#{method.to_s.titleize}".constantize.new(path, init_header).tap do |request|
+        request.body = data
+      end
     end
   end
 
@@ -36,9 +38,9 @@ module SignedActiveResource
     def self.request_handler(object_instance = nil)
       SignedRequestHandler.new(request_signature, object_instance)
     end
-    
+
     protected
-    
+
     def connection(refresh = false)
       self.class.connection(refresh).tap do |c|
         c.request_handler = request_handler
