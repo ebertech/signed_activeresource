@@ -2,42 +2,41 @@ require 'active_support/core_ext/string/inflections'
 require 'active_resource'
 
 module SignedActiveResource
-  class Base < ActiveResource::Base
-
-    class SignedRequestHandler
-      def initialize(request_signer = nil, object_instance = nil)
-        @request_signer = request_signer
-        @object_instance = object_instance
-      end
-
-      def handle_request(http, method, path, *arguments)
-        if arguments.size > 1
-          data = arguments.shift
-        end
-        init_header = arguments.shift
-        request = build_request(method, path, init_header)
-
-        @request_signer.sign!(request) if @request_signer
-
-        http.request request, data
-      end
-
-      def build_request(method, path, init_header)
-        "Net::HTTP::#{method.to_s.titleize}".constantize.new(path, init_header)
-      end
+  class SignedRequestHandler
+    def initialize(request_signer = nil, object_instance = nil)
+      @request_signer = request_signer
+      @object_instance = object_instance
     end
 
+    def handle_request(http, method, path, *arguments)
+      if arguments.size > 1
+        data = arguments.shift
+      end
+      init_header = arguments.shift
+      request = build_request(method, path, init_header)
+
+      @request_signer.sign!(request) if @request_signer
+
+      http.request request, data
+    end
+
+    def build_request(method, path, init_header)
+      "Net::HTTP::#{method.to_s.titleize}".constantize.new(path, init_header)
+    end
+  end
+
+  class Base < ActiveResource::Base
     def self.connection(refresh = false)
       @connection = Connection.new(site, format) if @connection.nil? || refresh
       @connection.request_handler = request_handler
       @connection.timeout = timeout if timeout
       return @connection
     end
-    
+
     def self.request_handler(object_instance = nil)
       SignedRequestHandler.new(request_signature, object_instance)
     end
-    
+
     def request_handler
       self.class.request_handler(self)
     end
